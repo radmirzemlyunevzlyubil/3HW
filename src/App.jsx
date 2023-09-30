@@ -1,115 +1,154 @@
-import React, { useState } from "react";
+import React, { Component } from "react";
 import "./App.css";
 
-function App() {
-  const [state, setState] = useState("");
-  const [tasks, setTasks] = useState([]);
-  const [editingTask, setEditingTask] = useState("");
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [isUpdateMode, setIsUpdateMode] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
+class TextEditor extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      editingTask: props.text || "", // Устанавливаем начальное значение из пропсов
+      editingIndex: null,
+      isUpdateMode: false,
+    };
+  }
 
-  const onAddTask = (e) => {
+  onUpdateTask = (e) => {
     e.preventDefault();
-    if (!state.trim()) {
+    if (!this.state.editingTask.trim()) {
+      return;
+    }
+
+    this.props.onUpdateTask(this.state.editingTask, this.state.editingIndex);
+
+    this.setState({
+      editingIndex: null,
+      editingTask: "",
+      isUpdateMode: false,
+    });
+  };
+
+  render() {
+    return (
+      <form onSubmit={this.state.isUpdateMode ? this.onUpdateTask : this.props.onAddTask}>
+        <input
+          value={this.state.isUpdateMode ? this.state.editingTask : this.props.text} // Используем this.props.text для отображения текста
+          onChange={(event) =>
+            this.setState({
+              [this.state.isUpdateMode ? "editingTask" : "text"]: event.target.value,
+            })
+          }
+          type="text"
+          placeholder="type something..."
+        />
+        <button>{this.state.isUpdateMode ? "Update" : "Add"}</button>
+      </form>
+    );
+  }
+}
+
+class App extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      state: "",
+      tasks: [],
+      selectedTaskId: null,
+    };
+  }
+
+  onAddTask = (e) => {
+    e.preventDefault();
+    if (!this.state.state.trim()) {
       return;
     }
 
     const date = Date.now();
-    setTasks((prevTasks) => [
-      ...prevTasks,
-      {
-        id: date,
-        value: state,
-        isImportant: false,
-      },
-    ]);
-
-    setState("");
-    setEditingTask("");
+    this.setState((prevState) => ({
+      tasks: [
+        ...prevState.tasks,
+        {
+          id: date,
+          value: prevState.state,
+          isImportant: false,
+        },
+      ],
+      state: "",
+    }));
   };
 
-  const onUpdateTask = (e) => {
-    e.preventDefault();
+  onUpdateTask = (editingTask, editingIndex) => {
     if (!editingTask.trim()) {
       return;
     }
 
-    setTasks((prevTasks) =>
-      prevTasks.map((task, index) =>
+    this.setState((prevState) => ({
+      tasks: prevState.tasks.map((task, index) =>
         index === editingIndex ? { ...task, value: editingTask } : task
-      )
-    );
-
-    setEditingIndex(null);
-    setEditingTask("");
-    setIsUpdateMode(false);
+      ),
+    }));
   };
 
-  const onDeleteTask = (id) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+  onDeleteTask = (id) => {
+    this.setState((prevState) => ({
+      tasks: prevState.tasks.filter((task) => task.id !== id),
+    }));
   };
 
-  const onEditTask = (id) => {
-    const taskToEdit = tasks.find((task) => task.id === id);
+  onEditTask = (id) => {
+    const taskToEdit = this.state.tasks.find((task) => task.id === id);
     if (taskToEdit) {
-      setEditingTask(taskToEdit.value);
-      setEditingIndex(tasks.indexOf(taskToEdit));
-      setIsUpdateMode(true);
+      this.textEditorRef.setState({
+        editingTask: taskToEdit.value,
+        editingIndex: this.state.tasks.indexOf(taskToEdit),
+        isUpdateMode: true,
+      });
     }
   };
 
-
-  return (
-    <div>
+  render() {
+    return (
       <div>
-        <form onSubmit={isUpdateMode ? onUpdateTask : onAddTask}>
-          <input
-            value={isUpdateMode ? editingTask : state}
-            onChange={(event) =>
-              isUpdateMode
-                ? setEditingTask(event.target.value)
-                : setState(event.target.value)
-            }
-            type="text"
-            placeholder="type something..."
+        <div>
+          <TextEditor
+            ref={(ref) => (this.textEditorRef = ref)}
+            text={this.state.state}
+            onAddTask={this.onAddTask}
+            onUpdateTask={this.onUpdateTask}
           />
-          <button>{isUpdateMode ? "Update" : "Add"}</button>
-        </form>
-      </div>
+        </div>
 
-      <div>
-        <ul>
-          {tasks.map((item) => (
-            <li key={item.id}>
-              <h3
-                style={{
-                  color:
-                    selectedTaskId === item.id
-                      ? "green"
-                      : item.isImportant
-                      ? "green"
-                      : "black",
-                  cursor: "pointer",
-                }}
-                onClick={() => {
-                  if (selectedTaskId === item.id) {
-                    setSelectedTaskId(null);
-                  } else {
-                    setSelectedTaskId(item.id);
-                  }
-                }}
-              >
-                {item.value}
-              </h3>
-              <button onClick={() => onDeleteTask(item.id)}>delete</button>
-              <button onClick={() => onEditTask(item.id)}>edit</button>
-            </li>
-          ))}
-        </ul>
+        <div>
+          <ul>
+            {this.state.tasks.map((item) => (
+              <li key={item.id}>
+                <h3
+                  style={{
+                    color:
+                      this.state.selectedTaskId === item.id
+                        ? "green"
+                        : item.isImportant
+                        ? "green"
+                        : "black",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    if (this.state.selectedTaskId === item.id) {
+                      this.setState({ selectedTaskId: null });
+                    } else {
+                      this.setState({ selectedTaskId: item.id });
+                    }
+                  }}
+                >
+                  {item.value}
+                </h3>
+                <button onClick={() => this.onDeleteTask(item.id)}>delete</button>
+                <button onClick={() => this.onEditTask(item.id)}>edit</button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default App;
