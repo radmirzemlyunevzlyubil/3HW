@@ -1,56 +1,15 @@
 import React, { Component } from "react";
 import "./App.css";
 
-class TextEditor extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      editingTask: props.text || "", // Устанавливаем начальное значение из пропсов
-      editingIndex: null,
-      isUpdateMode: false,
-    };
-  }
-
-  onUpdateTask = (e) => {
-    e.preventDefault();
-    if (!this.state.editingTask.trim()) {
-      return;
-    }
-
-    this.props.onUpdateTask(this.state.editingTask, this.state.editingIndex);
-
-    this.setState({
-      editingIndex: null,
-      editingTask: "",
-      isUpdateMode: false,
-    });
-  };
-
-  render() {
-    return (
-      <form onSubmit={this.state.isUpdateMode ? this.onUpdateTask : this.props.onAddTask}>
-        <input
-          value={this.state.isUpdateMode ? this.state.editingTask : this.props.text} // Используем this.props.text для отображения текста
-          onChange={(event) =>
-            this.setState({
-              [this.state.isUpdateMode ? "editingTask" : "text"]: event.target.value,
-            })
-          }
-          type="text"
-          placeholder="type something..."
-        />
-        <button>{this.state.isUpdateMode ? "Update" : "Add"}</button>
-      </form>
-    );
-  }
-}
-
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
       state: "",
       tasks: [],
+      editingTask: "",
+      editingIndex: null,
+      isUpdateMode: false,
       selectedTaskId: null,
     };
   }
@@ -72,18 +31,25 @@ class App extends Component {
         },
       ],
       state: "",
+      editingTask: "",
     }));
   };
 
-  onUpdateTask = (editingTask, editingIndex) => {
-    if (!editingTask.trim()) {
+  onUpdateTask = (e) => {
+    e.preventDefault();
+    if (!this.state.editingTask.trim()) {
       return;
     }
 
     this.setState((prevState) => ({
       tasks: prevState.tasks.map((task, index) =>
-        index === editingIndex ? { ...task, value: editingTask } : task
+        index === prevState.editingIndex
+          ? { ...task, value: prevState.editingTask }
+          : task
       ),
+      editingIndex: null,
+      editingTask: "",
+      isUpdateMode: false,
     }));
   };
 
@@ -96,7 +62,7 @@ class App extends Component {
   onEditTask = (id) => {
     const taskToEdit = this.state.tasks.find((task) => task.id === id);
     if (taskToEdit) {
-      this.textEditorRef.setState({
+      this.setState({
         editingTask: taskToEdit.value,
         editingIndex: this.state.tasks.indexOf(taskToEdit),
         isUpdateMode: true,
@@ -108,12 +74,21 @@ class App extends Component {
     return (
       <div>
         <div>
-          <TextEditor
-            ref={(ref) => (this.textEditorRef = ref)}
-            text={this.state.state}
-            onAddTask={this.onAddTask}
-            onUpdateTask={this.onUpdateTask}
-          />
+          <form
+            onSubmit={this.state.isUpdateMode ? this.onUpdateTask : this.onAddTask}
+          >
+            <input
+              value={this.state.isUpdateMode ? this.state.editingTask : this.state.state}
+              onChange={(event) =>
+                this.setState({
+                  [this.state.isUpdateMode ? "editingTask" : "state"]: event.target.value,
+                })
+              }
+              type="text"
+              placeholder="type something..."
+            />
+            <button>{this.state.isUpdateMode ? "Update" : "Add"}</button>
+          </form>
         </div>
 
         <div>
